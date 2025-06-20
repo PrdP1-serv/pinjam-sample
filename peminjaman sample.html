@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Data Transaksi</title>
+  <style>
+    :root {
+      --primary: #4285f4;
+      --primary-light: #e8f0fe;
+      --text: #202124;
+      --text-light: #5f6368;
+      --border: #dadce0;
+      --hover: #f8f9fa;
+      --white: #ffffff;
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      line-height: 1.5;
+      color: var(--text);
+      background-color: #f5f7fa;
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 500;
+      color: var(--primary);
+    }
+    
+    .search-container {
+      position: relative;
+      flex-grow: 1;
+      max-width: 400px;
+    }
+    
+    .search-icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-light);
+    }
+    
+    #searchDeskripsi {
+      width: 100%;
+      padding: 10px 16px 10px 40px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.9rem;
+      transition: all 0.3s ease;
+    }
+    
+    #searchDeskripsi:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px var(--primary-light);
+    }
+    
+    .table-container {
+      background-color: var(--white);
+      border-radius: 8px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+      overflow: hidden;
+      margin-top: 16px;
+      position: relative;
+      max-height: 90vh; /* Adjust based on your needs */
+      overflow-y: auto;
+    }
+    
+    /* This is the key part for sticky header */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+    
+    thead {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    
+    th, td {
+      padding: 6px 6px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    th {
+      background-color: var(--primary-light);
+      color: var(--primary);
+      font-weight: 500;
+    }
+    
+    tr:hover {
+      background-color: var(--hover);
+    }
+    
+    .status {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      font-weight: 500;
+    }
+    
+    .status-pinjam {
+      background-color: #e6f4ea;
+      color: #137333;
+    }
+    
+    .loading {
+      display: flex;
+      justify-content: center;
+      padding: 40px;
+    }
+    
+    .spinner {
+      width: 24px;
+      height: 24px;
+      border: 3px solid var(--primary-light);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    @media (max-width: 600px) {
+      th, td {
+        padding: 8px 12px;
+        font-size: 0.9rem;
+      }
+      
+      header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      
+      .search-container {
+        max-width: 100%;
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Data Transaksi Peminjaman Sample Produksi</h1>
+    <div class="search-container">
+      <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+      <input type="text" id="searchDeskripsi" placeholder="Cari deskripsi...">
+    </div>
+  </header>
+  
+  <div class="table-container">
+    <table id="dataTable">
+      <thead>
+        <tr>
+          <th style="width: 100px">Pinjam</th>
+		  <th style="width: 100px">Kembali</th>
+          <th style="width: 180px">Item Number</th>
+          <th>Deskripsi</th>
+          <th style="width: 100px">Jumlah</th>
+		  <th style="width: 100px">Nomor Buku</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td colspan="4" class="loading">
+            <div class="spinner"></div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    const apiUrl = 'https://script.google.com/macros/s/AKfycbzb8MLnYzEClNwhb_wAORvP_z6oj9wc20haUsPQk1hvhYM4dx4p5Kek0DuukAQvBI0j/exec';
+    let dataGlobal = [];
+
+    // Format number with thousands separator
+    function formatNumber(num) {
+      return num ? num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") : "";
+    }
+
+    // Format status badge
+    function formatStatus(status) {
+      if (!status) return "";
+      return `<span class="status status-pinjam">${status}</span>`;
+    }
+
+	function formatTanggal(dateInput) {
+	  // Jika input kosong/null/undefined, return string kosong
+	  if (!dateInput) return "";
+	  
+	  // Buat Date object dari input (jika belum Date object)
+	  const date = new Date(dateInput);
+	  
+	  // Jika hasilnya invalid date, return string kosong
+	  if (isNaN(date.getTime())) return "";
+	  
+	  // Ambil komponen tanggal
+	  const tahun = date.getFullYear();
+	  const bulan = String(date.getMonth() + 1).padStart(2, '0'); // Bulan 0-11 jadi +1
+	  const hari = String(date.getDate()).padStart(2, '0');
+	  
+	  // Gabungkan dalam format YYYY-MM-DD
+	  return `${tahun}-${bulan}-${hari}`;
+	}
+
+    function tampilkanData(data) {
+      const tbody = document.querySelector("#dataTable tbody");
+      
+      if (data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 20px;">Tidak ada data yang ditemukan</td></tr>`;
+        return;
+      }
+      
+      tbody.innerHTML = "";
+	  // Urutkan berdasarkan tanggal Pinjam DESC (terbaru di atas)
+	  data.sort((a, b) => {
+		const tglA = new Date(a.Pinjam || "1970-01-01");
+		const tglB = new Date(b.Pinjam || "1970-01-01");
+		return tglB - tglA; // terbaru ke atas
+	  });
+      
+      data.forEach(row => {
+        const tr = document.createElement("tr");
+        
+        const fields = [
+          { key: "Pinjam", formatter: formatTanggal },
+		  { key: "Kembali", formatter: formatTanggal },
+          { key: "itemnumber" },
+          { key: "Deskripsi" },
+          { key: "Jumlah", formatter: formatNumber },
+		  { key: "nomor"}
+        ];
+        
+        fields.forEach(field => {
+          const td = document.createElement("td");
+          let content = row[field.key] || "";
+          
+          if (field.formatter) {
+            content = field.formatter(content);
+          }
+          
+          td.innerHTML = content;
+          tr.appendChild(td);
+        });
+        
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Load data
+    fetch(apiUrl)
+      .then(response => {
+        if (!response.ok) throw new Error("Network response was not ok");
+        return response.json();
+      })
+      .then(data => {
+        dataGlobal = data;
+        tampilkanData(dataGlobal);
+      })
+      .catch(error => {
+        console.error("Error fetching data:", error);
+        const tbody = document.querySelector("#dataTable tbody");
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 20px; color: #d32f2f;">Gagal memuat data. Silakan coba lagi.</td></tr>`;
+      });
+
+    // Search functionality
+    document.getElementById("searchDeskripsi").addEventListener("input", function() {
+      const keyword = this.value.toLowerCase().trim();
+      
+      if (!keyword) {
+        tampilkanData(dataGlobal);
+        return;
+      }
+      
+      const filtered = dataGlobal.filter(row => 
+        (row.Deskripsi || "").toLowerCase().includes(keyword) ||
+        (row.itemnumber || "").toLowerCase().includes(keyword)
+      );
+      
+      tampilkanData(filtered);
+    });
+  </script>
+</body>
+</html>
